@@ -1,0 +1,33 @@
+server:
+  port: 8098
+
+spring:
+  application:
+    name: batch-v5
+  jackson:
+    default-property-inclusion: NON_NULL
+    serialization:
+      fail-on-empty-beans: false
+  #disabled job run at startup
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+  data:
+    mongodb:
+      host: localhost
+      port: 27018
+      database: sample_training
+      username: admin_user
+      password: admin_pass
+      auto-index-creation: false
+
+batch:
+   csv-path-directory: /Users/ivan/Documents/workspace/spring-batch5-mongodb/src/main/resources
+
+# Enable Logging mongo queries
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+
