@@ -13,10 +13,10 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>spring-batch5-mongodb</name>
 	<description>Demo project for Spring Batch 5 and MongoDB</description>
-	<properties>
-		<java.version>17</java.version>
-		<h2database.version>2.2.224</h2database.version>
-	</properties>
+<!--	<properties>-->
+<!--		<java.version>17</java.version>-->
+<!--		<h2database.version>2.2.224</h2database.version>-->
+<!--	</properties>-->
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -57,20 +57,20 @@
 			<scope>test</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<version>${h2database.version}</version>
-			<scope>runtime</scope>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>com.h2database</groupId>-->
+<!--			<artifactId>h2</artifactId>-->
+<!--			<version>${h2database.version}</version>-->
+<!--			<scope>runtime</scope>-->
+<!--		</dependency>-->
 		<dependency>
 			<groupId>org.springframework.batch</groupId>
 			<artifactId>spring-batch-infrastructure</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>eu.europeana.api</groupId>
-			<artifactId>spring-batch-mongo</artifactId>
-			<version>1.0.5</version>
+			<groupId>dev.morphia.morphia</groupId>
+			<artifactId>morphia-core</artifactId>
+			<version>2.4.13</version>
 		</dependency>
 	</dependencies>
 
@@ -90,18 +90,5 @@
 			</plugin>
 		</plugins>
 	</build>
-
-	<repositories>
-		<repository>
-			<id>libs-release</id>
-			<name>europeana-releases</name>
-			<url>https://artifactory.eanadev.org/artifactory/libs-release</url>
-		</repository>
-		<repository>
-			<id>libs-snapshots</id>
-			<name>europeana-snapshots</name>
-			<url>https://artifactory.eanadev.org/artifactory/libs-snapshot</url>
-		</repository>
-	</repositories>
 
 </project>

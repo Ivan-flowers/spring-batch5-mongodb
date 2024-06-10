@@ -1,5 +1,6 @@
 package com.bootlabs.springbatch5mongodb.job;
 
+import com.bootlabs.springbatch5mongodb.batch.config.MongoBatchConfigurer;
 import com.bootlabs.springbatch5mongodb.config.MongodbProperties;
 import com.bootlabs.springbatch5mongodb.domain.document.Trips;
 import com.bootlabs.springbatch5mongodb.domain.model.TripCsvLine;
@@ -7,16 +8,10 @@ import com.bootlabs.springbatch5mongodb.job.step.TripItemProcessor;
 import com.bootlabs.springbatch5mongodb.job.step.TripItemReader;
 import com.bootlabs.springbatch5mongodb.job.step.TripItemWriter;
 import com.bootlabs.springbatch5mongodb.job.step.TripStepListener;
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
-import com.mongodb.client.MongoClients;
-import dev.morphia.Datastore;
-import dev.morphia.Morphia;
-import eu.europeana.batch.config.MongoBatchConfigurer;
-import eu.europeana.batch.entity.PackageMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
@@ -39,17 +34,21 @@ import static com.bootlabs.springbatch5mongodb.domain.constant.BatchConstants.DE
 
 @Configuration
 @RequiredArgsConstructor
+@EnableBatchProcessing
 public class JobConfig {
     private final MongodbProperties mongodbProperties;
 
 
+//    @Bean
+//    public DataSource getDataSource() {
+//        return new EmbeddedDatabaseBuilder()
+//                .setType(EmbeddedDatabaseType.valueOf("MongoDb"))
+//                .build();
+//    }
+
     @Bean
-    public DataSource getDataSource() {
-        return new EmbeddedDatabaseBuilder()
-                .addScript("classpath:org/springframework/batch/core/schema-drop-h2.sql")
-                .addScript("classpath:org/springframework/batch/core/schema-h2.sql")
-                .setType(EmbeddedDatabaseType.H2)
-                .build();
+    public MongoBatchConfigurer mongoBatchConfigurer() {
+        return new MongoBatchConfigurer(mongodbProperties, new SimpleAsyncTaskExecutor());
     }
 
 //    @Bean
@@ -74,6 +73,7 @@ public class JobConfig {
     @Bean
     public Job tripJob(JobRepository jobRepository, PlatformTransactionManager transactionManager,
                        MongoTemplate mongoTemplate) {
+
         return new JobBuilder("tripJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .start(tripJobStep(jobRepository, transactionManager, mongoTemplate))
