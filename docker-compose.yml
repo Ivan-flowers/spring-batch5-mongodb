@@ -1,0 +1,79 @@
+services:
+  mongod:
+    image: mongodb/mongodb-enterprise-server:7.0-ubi8
+    entrypoint: "/bin/sh -c \"echo \"$$KEYFILECONTENTS\" > \"$$KEYFILE\"\n\nchmod 400 \"$$KEYFILE\"\n\n\npython3 /usr/local/bin/docker-entrypoint.py mongod --transitionToAuth --keyFile \"$$KEYFILE\" --replSet \"rs0\" --setParameter \"mongotHost=$$MONGOTHOST\" --setParameter \"searchIndexManagementHostAndPort=$$MONGOTHOST\"\""
+    environment:
+      MONGOTHOST: mongot:27027
+      KEYFILE: /data/db/keyfile
+      KEYFILECONTENTS: sup3rs3cr3tk3y
+      MONGODB_INITDB_ROOT_USERNAME: admin_user
+      MONGODB_INITDB_ROOT_PASSWORD: admin_pass
+    volumes:
+    - ./local/mongo/data:/data/db
+    ports:
+    - 27018:27017
+    networks:
+      network:
+  mongot:
+    image: mongodb/mongodb-atlas-search:1.36.1.2063
+    entrypoint: "/bin/sh -c \"echo \"$$KEYFILECONTENTS\" > \"$$KEYFILE\"\n\n/etc/mongot-localdev/mongot  --mongodHostAndPort \"$$MONGOD_HOST_AND_PORT\" --keyFile \"$$KEYFILE\"\""
+    environment:
+      MONGOD_HOST_AND_PORT: mongod:27017
+      KEYFILE: /var/lib/mongot/keyfile
+      KEYFILECONTENTS: sup3rs3cr3tk3y
+    ports:
+    - 27027:27027
+    networks:
+      network:
+  mongosetup:
+    image: mongodb/mongodb-enterprise-server:7.0-ubi8
+    depends_on:
+    - mongod
+    restart: no
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: admin_user
+      MONGODB_INITDB_ROOT_PASSWORD: admin_pass
+    volumes:
+    - ./local/mongo:/docker-entrypoint-initdb.d
+    networks:
+      network:
+    command:
+    - sh
+    - -c
+    - >
+      set -euo pipefail;
+      echo "[INFO] Starting MongoDB setup ...";
+      RETRY_COUNT=0;
+      MAX_RETRIES=30;
+      INIT_COMMAND="mongosh --host mongod --quiet --username $$MONGODB_INITDB_ROOT_USERNAME --password $$MONGODB_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'try{rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongod\"}]}).ok;}catch(e){rs.status().ok}'";
+      until IS_MONGO_RUNNING=$$(sh -c "$${INIT_COMMAND}"); do
+        RETRY_COUNT=$$((RETRY_COUNT+1));
+        if [ $${RETRY_COUNT} -ge $${MAX_RETRIES} ]; then
+          echo "[ERROR] MongoDB setup failed after $${MAX_RETRIES} attempts.";
+          exit 1;
+        fi;
+        echo "[INFO] Waiting for the MongoDB setup to finish ... (Attempt: $${RETRY_COUNT})";
+        sleep 1;
+      done;
+      echo "[INFO] MongoDB setup completed successfully. Setting up Index";
+      mongosh --host mongod --quiet --username $$MONGODB_INITDB_ROOT_USERNAME --password $$MONGODB_INITDB_ROOT_PASSWORD --authenticationDatabase admin -f /docker-entrypoint-initdb.d/mongo-init.js;
+  localstack:
+    image: localstack/localstack
+    ports:
+    - 4567:4566
+    environment:
+    - DEFAULT_REGION=eu-central-1
+    - DATA_DIR=/s3/data
+    - DEBUG=1
+    volumes:
+    - localstack_s3_data:/s3/data
+    - ./local/localstack:/etc/localstack/init/ready.d
+    healthcheck:
+      test: >
+        /bin/sh -c "curl --retry 6 --max-time 5 --retry-delay 5  -s http://localhost:4566/_localstack/init/ready |  grep -q '\"state\": \"SUCCESSFUL\"' ||  (echo 'Healthcheck failed: LocalStack not ready or main process not found.' && pkill -f 'localstack.runtime.main')"
+      retries: 1
+volumes:
+  localstack_s3_data:
+networks:
+  network:
+    driver: bridge
