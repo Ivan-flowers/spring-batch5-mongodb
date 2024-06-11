@@ -38,7 +38,7 @@ public class ScheduledJobLauncher {
     }
 
     // run every 2 min
-    @Scheduled(fixedRate = 120000)
+//    @Scheduled(fixedRate = 120000)
 //    @Scheduled(fixedRate = 240000)
     void launchFileToJob() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobInstanceAlreadyCompleteException, JobRestartException {
         LOGGER.info("Scheduled Starting job");

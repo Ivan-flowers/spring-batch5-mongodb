@@ -20,4 +20,13 @@ public class BatchRepositoryUtils {
         }
         return paramMap;
     }
+
+    public static JobParameters convertFromMap(Map<String, Object>  jobParameters) {
+        // first clean the parameters, as we can't have "." within mongo field names
+        Map<String, JobParameter<?>> jobParams = new HashMap<>();
+        for (Map.Entry<String, Object> entry : jobParameters.entrySet()) {
+            jobParams.put(entry.getKey().replaceAll(DOT_ESCAPE_STRING, DOT_STRING), new JobParameter(entry.getValue(), entry.getValue().getClass()));
+        }
+        return new JobParameters(jobParams);
+    }
 }

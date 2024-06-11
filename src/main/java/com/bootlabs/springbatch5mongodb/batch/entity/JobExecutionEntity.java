@@ -1,18 +1,18 @@
 package com.bootlabs.springbatch5mongodb.batch.entity;
 
+import com.bootlabs.springbatch5mongodb.batch.utils.BatchRepositoryUtils;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import dev.morphia.annotations.Indexed;
-
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.bson.types.ObjectId;
-import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.*;
 
 @Entity("JobExecution")
 public class JobExecutionEntity {
@@ -28,9 +28,9 @@ public class JobExecutionEntity {
     @Indexed
     private long jobInstanceId;
 
-    private Date startTime;
+    private String startTime;
 
-    private Date endTime;
+    private String endTime;
 
     private String status;
 
@@ -38,11 +38,11 @@ public class JobExecutionEntity {
 
     private String exitMessage;
 
-    private Date createTime;
+    private String createTime;
 
-    private Date lastUpdated;
+    private String lastUpdated;
 
-    private JobParameters jobParameters = null;
+    private Map<String, Object> jobParameters = new HashMap<>();
 
     public int getVersion() {
         return version;
@@ -56,11 +56,11 @@ public class JobExecutionEntity {
         return jobInstanceId;
     }
 
-    public Date getStartTime() {
+    public String getStartTime() {
         return startTime;
     }
 
-    public Date getEndTime() {
+    public String getEndTime() {
         return endTime;
     }
 
@@ -76,27 +76,25 @@ public class JobExecutionEntity {
         return exitMessage;
     }
 
-    public Date getCreateTime() {
+    public String getCreateTime() {
         return createTime;
     }
 
-    public Date getLastUpdated() {
+    public String getLastUpdated() {
         return lastUpdated;
     }
 
-    public void setJobParameters(JobParameters jobParameters) {
-        this.jobParameters = jobParameters;
-    }
 
-    public JobParameters getJobParameters() {
+    public Map<String, Object> getJobParameters() {
         return jobParameters;
     }
 
     public static JobExecutionEntity toEntity(JobExecution jobExecution) {
         JobExecutionEntity jobExecutionEntity = new JobExecutionEntity();
 
-        JobParameters paramMap = jobExecution.getJobParameters();
+        Map<String, Object> paramMap = BatchRepositoryUtils.convertToMap(jobExecution.getJobParameters());
 
+//        jobExecutionEntity._id = new ObjectId(jobExecution.getId().toString());
         jobExecutionEntity.version = jobExecution.getVersion();
         jobExecutionEntity.jobExecutionId = jobExecution.getId();
         jobExecutionEntity.startTime = getDateFromLocalDateTime(jobExecution.getStartTime());
@@ -111,10 +109,15 @@ public class JobExecutionEntity {
         return jobExecutionEntity;
     }
 
-    private static Date getDateFromLocalDateTime(LocalDateTime localDateTime) {
-        if(localDateTime == null) return null;
+    private static String getDateFromLocalDateTime(LocalDateTime localDateTime) {
+        if(localDateTime == null) return "";
         else{
-            return Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant());
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            // Convert LocalDateTime to String
+            String dateTimeString = localDateTime.format(formatter);
+
+            return localDateTime.format(formatter);
         }
     }
 
@@ -123,7 +126,7 @@ public class JobExecutionEntity {
             return null;
         }
 
-        JobParameters jobParameters = jobExecutionEntity.getJobParameters();
+        JobParameters jobParameters = BatchRepositoryUtils.convertFromMap(jobExecutionEntity.getJobParameters());
 
         JobExecution jobExecution =
                 new JobExecution(jobExecutionEntity.getJobExecutionId(), jobParameters);
@@ -139,10 +142,13 @@ public class JobExecutionEntity {
         return jobExecution;
     }
 
-    private static LocalDateTime getLocalDateTimeFromDate(Date date) {
-        if(date == null) return null;
+    private static LocalDateTime getLocalDateTimeFromDate(String date) {
+        if(date == null) return LocalDateTime.now();
+
         else{
-            return LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            return LocalDateTime.parse(date, formatter);
         }
     }
 }
