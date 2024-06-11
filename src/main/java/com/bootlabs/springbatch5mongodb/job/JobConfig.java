@@ -8,12 +8,9 @@ import com.bootlabs.springbatch5mongodb.job.step.TripItemProcessor;
 import com.bootlabs.springbatch5mongodb.job.step.TripItemReader;
 import com.bootlabs.springbatch5mongodb.job.step.TripItemWriter;
 import com.bootlabs.springbatch5mongodb.job.step.TripStepListener;
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClients;
 import dev.morphia.Datastore;
 import dev.morphia.Morphia;
-import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.explore.JobExplorer;
@@ -21,7 +18,6 @@ import org.springframework.batch.core.explore.support.SimpleJobExplorer;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.dao.ExecutionContextDao;
@@ -36,11 +32,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.transaction.PlatformTransactionManager;
-
-import javax.sql.DataSource;
 
 import java.text.MessageFormat;
 
@@ -60,6 +52,7 @@ public class JobConfig {
     public JobConfig(MongodbProperties mongodbProperties) {
         this.mongodbProperties = mongodbProperties;
 
+        // TODO: there is already Datastore bean, move this gay away
         var connectionString = MessageFormat.format("mongodb://{0}:{1}@{2}:{3}/{4}?authSource=admin&ssl=false",
                 mongodbProperties.getUsername(), mongodbProperties.getPassword(), mongodbProperties.getHost(), mongodbProperties.getPort(), mongodbProperties.getDatabase());
 
@@ -76,15 +69,6 @@ public class JobConfig {
         this.mongoStepExecutionDao = new StepExecutionRepository(datastore);
         this.taskExecutor = new SimpleAsyncTaskExecutor();
     }
-
-//    @Bean
-//    public DataSource getDataSource() {
-//        return new EmbeddedDatabaseBuilder()
-//                .addScript("classpath:org/springframework/batch/core/schema-drop-h2.sql")
-//                .addScript("classpath:org/springframework/batch/core/schema-h2.sql")
-//                .setType(EmbeddedDatabaseType.H2)
-//                .build();
-//    }
 
     @Bean
     public Datastore getDataSource() {
@@ -123,11 +107,6 @@ public class JobConfig {
     public JobExplorer getJobExplorer() throws Exception {
         return new SimpleJobExplorer(this.mongoJobInstanceDao, this.mongoJobExecutionDao, this.mongoStepExecutionDao, this.mongoExecutionContextDao);
     }
-
-//    @Bean
-//    public MongoBatchConfigurer mongoBatchConfigurer() {
-//        return new MongoBatchConfigurer(getDataSource(), new SimpleAsyncTaskExecutor());
-//    }
 
     @Bean
     public Job tripJob(JobRepository jobRepository, Step step) {
