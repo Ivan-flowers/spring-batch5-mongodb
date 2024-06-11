@@ -180,7 +180,7 @@ public class StepExecutionRepository extends AbstractRepository implements StepE
                 stepExecution.getVersion(),
                 "to-be-saved (not updated) StepExecution can't already have a version assigned");
 
-        validateStepExecution(stepExecution);
+//        validateStepExecution(stepExecution); TODO: check that it's not needed
 
         synchronized (this) {
             stepExecution.setId(generateSequence(StepExecutionEntity.class.getSimpleName()));
