@@ -1,10 +1,6 @@
 package com.bootlabs.springbatch5mongodb.job;
 
-import com.bootlabs.springbatch5mongodb.batch.repository.PackageMapper;
-import com.bootlabs.springbatch5mongodb.batch.repository.StepExecutionRepository;
-import com.bootlabs.springbatch5mongodb.batch.repository.JobInstanceRepository;
-import com.bootlabs.springbatch5mongodb.batch.repository.ExecutionContextRepository;
-import com.bootlabs.springbatch5mongodb.batch.repository.JobExecutionRepository;
+import com.bootlabs.springbatch5mongodb.batch.repository.*;
 import com.bootlabs.springbatch5mongodb.config.MongodbProperties;
 import com.bootlabs.springbatch5mongodb.domain.document.Trips;
 import com.bootlabs.springbatch5mongodb.domain.model.TripCsvLine;
@@ -14,18 +10,18 @@ import com.bootlabs.springbatch5mongodb.job.step.TripItemWriter;
 import com.bootlabs.springbatch5mongodb.job.step.TripStepListener;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
-import dev.morphia.Morphia;
 import com.mongodb.client.MongoClients;
 import dev.morphia.Datastore;
+import dev.morphia.Morphia;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.explore.support.SimpleJobExplorer;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.dao.ExecutionContextDao;
@@ -53,22 +49,22 @@ import static com.bootlabs.springbatch5mongodb.domain.constant.BatchConstants.DE
 
 
 @Configuration
-@EnableBatchProcessing
 public class JobConfig {
+    private final MongodbProperties mongodbProperties;
     private final ExecutionContextDao mongoExecutionContextDao;
     private final JobExecutionDao mongoJobExecutionDao;
     private final JobInstanceDao mongoJobInstanceDao;
     private final StepExecutionDao mongoStepExecutionDao;
     private final TaskExecutor taskExecutor;
-    private final JobRepository jobRepository;
 
+    public JobConfig(MongodbProperties mongodbProperties) {
+        this.mongodbProperties = mongodbProperties;
 
-    public JobConfig() {
-
-        var connectionString = "mongodb://admin_user:admin_pass@localhost:27018/sample_training?authSource=admin&ssl=false";
+        var connectionString = MessageFormat.format("mongodb://{0}:{1}@{2}:{3}/{4}?authSource=admin&ssl=false",
+                mongodbProperties.getUsername(), mongodbProperties.getPassword(), mongodbProperties.getHost(), mongodbProperties.getPort(), mongodbProperties.getDatabase());
 
         Datastore datastore = Morphia.createDatastore(
-                MongoClients.create(connectionString), "sample_training");
+                MongoClients.create(connectionString), mongodbProperties.getDatabase());
 
         // Required to create indices on database
         datastore.getMapper().mapPackage(PackageMapper.class.getPackageName());
@@ -79,17 +75,24 @@ public class JobConfig {
         this.mongoJobInstanceDao = new JobInstanceRepository(datastore);
         this.mongoStepExecutionDao = new StepExecutionRepository(datastore);
         this.taskExecutor = new SimpleAsyncTaskExecutor();
-        this.jobRepository = new SimpleJobRepository(this.mongoJobInstanceDao, this.mongoJobExecutionDao, this.mongoStepExecutionDao, this.mongoExecutionContextDao);
     }
 
+//    @Bean
+//    public DataSource getDataSource() {
+//        return new EmbeddedDatabaseBuilder()
+//                .addScript("classpath:org/springframework/batch/core/schema-drop-h2.sql")
+//                .addScript("classpath:org/springframework/batch/core/schema-h2.sql")
+//                .setType(EmbeddedDatabaseType.H2)
+//                .build();
+//    }
 
     @Bean
     public Datastore getDataSource() {
         var connectionString = MessageFormat.format("mongodb://{0}:{1}@{2}:{3}/{4}?authSource=admin&ssl=false",
-                "admin_user", "admin_pass", "localhost", "27018", "sample_training");
+                mongodbProperties.getUsername(), mongodbProperties.getPassword(), mongodbProperties.getHost(), mongodbProperties.getPort(), mongodbProperties.getDatabase());
 
         Datastore datastore = Morphia.createDatastore(
-                MongoClients.create(connectionString), "sample_training");
+                MongoClients.create(connectionString), mongodbProperties.getDatabase());
 
         // Required to create indices on database
         datastore.getMapper().mapPackage(PackageMapper.class.getPackageName());
@@ -98,10 +101,9 @@ public class JobConfig {
     }
 
     @Bean
-    public JobRepository getJobRepository() {
+    public JobRepository getJobRepository() throws Exception {
         return new SimpleJobRepository(this.mongoJobInstanceDao, this.mongoJobExecutionDao, this.mongoStepExecutionDao, this.mongoExecutionContextDao);
     }
-
 
     @Bean
     public PlatformTransactionManager getTransactionManager() throws Exception {
@@ -122,19 +124,22 @@ public class JobConfig {
         return new SimpleJobExplorer(this.mongoJobInstanceDao, this.mongoJobExecutionDao, this.mongoStepExecutionDao, this.mongoExecutionContextDao);
     }
 
-    @Bean
-    public Job tripJob(PlatformTransactionManager transactionManager,
-                       MongoTemplate mongoTemplate) {
+//    @Bean
+//    public MongoBatchConfigurer mongoBatchConfigurer() {
+//        return new MongoBatchConfigurer(getDataSource(), new SimpleAsyncTaskExecutor());
+//    }
 
+    @Bean
+    public Job tripJob(JobRepository jobRepository, Step step) {
         return new JobBuilder("tripJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(tripJobStep(transactionManager, mongoTemplate))
+                .start(step)
                 .listener(new TripJobCompletionListener())
                 .build();
     }
 
     @Bean
-    public Step tripJobStep(PlatformTransactionManager transactionManager,
+    public Step tripJobStep(JobRepository jobRepository, PlatformTransactionManager transactionManager,
                             MongoTemplate mongoTemplate) {
         return new StepBuilder("tripJobCSVGenerator", jobRepository)
                 .startLimit(DEFAULT_LIMIT_SIZE)
@@ -148,5 +153,3 @@ public class JobConfig {
     }
 
 }
-
-
